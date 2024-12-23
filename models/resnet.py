@@ -150,20 +150,22 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def forward(self, x, nce=False, val=False, BCL=False):
+    def forward(self, x, nce=False, val=False, BCL=False, fgssl=False):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
-        x = self.maxpool(x)
+        x1 = self.maxpool(x)
 
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
+        x2 = self.layer1(x1)
+        x3 = self.layer2(x2)
+        x4 = self.layer3(x3)
+        x5 = self.layer4(x4)
 
-        x = self.avgpool(x)
+        x = self.avgpool(x5)
         x = x.view(x.size(0), -1)
 
+        if fgssl:
+            return x1, x2, x3, x4, x5
         if nce: ## Supcon
             if val:
                 return x

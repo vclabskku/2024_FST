@@ -18,7 +18,7 @@ def get_opts():
 
     # model
     parser.add_argument('--model_name', type=str, default="imagenet")
-    parser.add_argument('--num_classes', type=int, default=10)
+    parser.add_argument('--num_classes', type=int, default=9)
     parser.add_argument('--depth', type=int, default=50)
     parser.add_argument('--bottleneck', type=bool, default=True)
     parser.add_argument('--resume_weights', type=str, help='resume_weights')
@@ -26,7 +26,7 @@ def get_opts():
     parser.add_argument('--hidden_dim', type=int, default=256)
 
     # train
-    parser.add_argument('--epochs', type=int, default=50)
+    parser.add_argument('--epochs', type=int, default=200)
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--weight_decay', type=float, default=1e-4)
     parser.add_argument('--step_size', type=int, default=40)
@@ -47,6 +47,14 @@ def get_opts():
     # pretext task (lorot)
     parser.add_argument('--pretext', type=str, default='None')
     parser.add_argument('--pretext_ratio', type=float, default=0.1)
+
+    # fg-ssl task
+    parser.add_argument('--fgssl', type=bool, default=False)
+    parser.add_argument("--patches", type = int, nargs = "*")
+    parser.add_argument("--featdim", type = int, default = 512, required = False)
+    parser.add_argument("--momentum", type = float, default = 0.9, required = False)
+    parser.add_argument("--cut_prob", type = float, default = -1.1, required = False)
+    parser.add_argument("--beta2", type = int, default = 1, required = False)
 
     # etc
     parser.add_argument('--gpus', nargs="+", type=int, default=[0])

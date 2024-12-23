@@ -3,6 +3,7 @@ import warnings
 import json
 import random
 import sys
+from tqdm import tqdm
 
 import numpy as np
 import torch
@@ -15,8 +16,11 @@ from loss.balanced_contrastive import BalSCL
 
 from utils.opt import get_opts
 from utils.pretext import lorotE, lorotI, rotation
-from dataset.datasets import FSTDataset
+from dataset.datasets import FSTDataset, barlowDataset
 import models.resnet as RN
+from models.pmg import PMG
+from utils.fgssl import get_ce_optimizer, get_barlow_optimizer, jigsaw_generator, barlow_criterion, cosine_anneal_schedule
+
 
 from visualization.plot_confusion import plot_confusion_matrix
 from collections import OrderedDict
@@ -31,7 +35,8 @@ def main(args):
     # GPU
     os.environ["CUDA_VISIBLE_DEVICES"] = ','.join(str(x) for x in args.gpus)
     print("\nCUDA_VISIBLE_DEVICES: [{}]\n".format(os.environ["CUDA_VISIBLE_DEVICES"]), flush=True)
-    
+    args.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+
     # seed
     seed = 0
     random.seed(seed)
@@ -54,6 +59,10 @@ def main(args):
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True, drop_last=True)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False, drop_last=False)
     args.num_classes = train_dataset.num_classes
+    # fg-ssl unlabel dataloader
+    if args.fgssl:
+        unlabel_dataset = barlowDataset(args, args.dataset_dir + args.train_list + '.json')
+        unlabel_dataloader = torch.utils.data.DataLoader(unlabel_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True, drop_last=True)
     print("<< Data Loading Finished.\n", flush=True)
 
     # model
@@ -65,9 +74,6 @@ def main(args):
         pass
     else:
         raise Exception('unknown network architecture: {}'.format(args.model_name))
-
-    num_params = count_parameters(model)
-    print("Total Parameter: \t%2.1fM" % num_params)
 
     # --- classifier layer for contrastive
     if 'contrastive' in args.loss_function:
@@ -96,8 +102,19 @@ def main(args):
     else:   
         print("Model: {} from scratch".format(args.model_name))
 
+    # fg-ssl get pmg model
+    if args.fgssl:
+        if args.model_name != 'resnet' or args.depth != 50 or args.resume_weights is None:
+            raise Exception('FG-SSL needs pretrained resnet50 now.')
+        for param in model.parameters():
+            param.requires_grad = True
+        model = PMG(args, model, args.featdim, args.num_classes)
+
+    num_params = count_parameters(model)
+    print("Total Parameter: \t%2.1fM" % num_params)
+
     model = model.cuda()
-    cls_num_list = [578, 3947, 155, 618, 10, 574, 39, 3, 242] # v3
+    cls_num_list = train_dataset.cls_num_list
     print("<< Model Loading Finished.\n")
 
     # --- loss function --- #
@@ -140,11 +157,16 @@ def main(args):
         precriterion = nn.CrossEntropyLoss()
     else:
         precriterion = nn.CrossEntropyLoss()
+
     # optimizer & scheduler
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 
-                                                step_size=len(train_loader)*args.step_size, 
-                                                gamma=args.gamma)
+    if not args.fgssl:
+        optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 
+                                                    step_size=len(train_loader)*args.step_size, 
+                                                    gamma=args.gamma)
+    else:
+        barlow_optimizer = get_barlow_optimizer(args, model)
+        ce_optimizer = get_ce_optimizer(args, model)
 
     # train
     print(">> Train...", flush=True)
@@ -156,6 +178,15 @@ def main(args):
         if args.loss_function == 'contrastive':
             train_nce(args, train_loader, model, BCL_criterion, precriterion, optimizer, scheduler, epoch, criterion, classifier_optimizer, classifier)
             result = val_nce(args, val_loader, model, criterion_ce, classifier)
+        elif args.fgssl:
+            # half epoch for training jigsaw
+            if epoch < args.epochs // 2:
+                ssl_loss = train_barlow(args, model, unlabel_dataloader, barlow_optimizer, epoch)
+                continue
+            # other half epoch for fine-tuning
+            else:
+                losses = train_fine(args, model, train_loader, ce_optimizer, criterion, epoch)
+                result = val_fine(args, model, val_loader, criterion)
         else:
             train(args, train_loader, model, criterion, precriterion, optimizer, scheduler, epoch, BCL_criterion=BCL_criterion)
             result = val(args, val_loader, model, criterion)
@@ -295,6 +326,145 @@ def train_nce(args, train_loader, model, criterion, precriterion, optimizer, sch
 
     return
 
+def train_barlow(args, model, unlabel_dl, optimizer, epoch):
+    lr = [0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.0002]
+    # lr = [x * 5.0 for x in lr]
+    losses = 0
+
+    model.train()
+    scaler = torch.cuda.amp.GradScaler(enabled=True)
+    optimizer.zero_grad()
+    for img_1, table_1_img, table_2_img, table_3_img, img_2 in tqdm(unlabel_dl, desc = "barlowtwins train", position = 1, leave = False):
+        for nlr in range(len(optimizer.param_groups)):
+            optimizer.param_groups[nlr]['lr'] = lr[nlr] #cosine_anneal_schedule(epoch, args.epochs, lr[nlr])    
+        img_1, table_1_img, table_2_img, table_3_img, img_2 = img_1.float().to(args.device), table_1_img.float().to(args.device), table_2_img.float().to(args.device), table_3_img.float().to(args.device), img_2.float().to(args.device)
+
+        optimizer.zero_grad()
+        with torch.cuda.amp.autocast(enabled=False):
+            _, _, _, _, x_ft_1, _, _, _ = model(table_1_img)
+            _, _, _, _, y_ft_1, _, _, _ = model(img_2)
+            barlow_loss_1 = barlow_criterion(x_ft_1, y_ft_1)
+        scaler.scale(barlow_loss_1).backward()
+        scaler.step(optimizer)
+        scaler.update()
+        losses += barlow_loss_1
+
+        optimizer.zero_grad()
+        with torch.cuda.amp.autocast(enabled=False):
+            _, _, _, _, _, x_ft_2, _, _ = model(table_2_img)
+            _, _, _, _, _, y_ft_2, _, _ = model(img_2)
+            barlow_loss_2 = barlow_criterion(x_ft_2, y_ft_2)
+        scaler.scale(barlow_loss_2).backward()
+        scaler.step(optimizer)
+        scaler.update()
+        losses += barlow_loss_2
+
+        optimizer.zero_grad()
+        with torch.cuda.amp.autocast(enabled=False):
+            _, _, _, _, _, _, x_ft_3, _ = model(table_3_img)
+            _, _, _, _, _, _, y_ft_3, _ = model(img_2)
+            barlow_loss_3 = barlow_criterion(x_ft_3, y_ft_3)
+        scaler.scale(barlow_loss_3).backward()
+        scaler.step(optimizer)
+        scaler.update()
+        losses += barlow_loss_3
+
+        optimizer.zero_grad()
+        with torch.cuda.amp.autocast(enabled=False):
+            _, _, _, _, _, _, _, x_ft_4 = model(img_1)
+            _, _, _, _, _, _, _, y_ft_4 = model(img_2)
+            barlow_loss_4 = barlow_criterion(x_ft_4, y_ft_4) * 2
+        scaler.scale(barlow_loss_4).backward()
+        scaler.step(optimizer)
+        scaler.update()
+        losses += barlow_loss_4
+    print("train losses: ", losses)
+    return losses
+
+def train_fine(args, model, train_dl, optimizer, loss_fn, epoch):
+
+    model.train()
+    lr = [0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.0002]
+    losses = 0
+    scaler = torch.cuda.amp.GradScaler(enabled = True)
+    for img, _, labels in tqdm(train_dl, desc = "origin_fine_train", position = 1, leave = False):
+        img, labels = img.to(args.device), labels.to(args.device)
+        
+        for nlr in range(len(optimizer.param_groups)):
+            optimizer.param_groups[nlr]['lr'] = cosine_anneal_schedule(epoch, args.epochs, lr[nlr])
+
+        r = np.random.rand(1)
+        if r > args.cut_prob:
+            pass
+        else:
+            lam = np.random.beta(args.beta2, args.beta2)
+            rand_index = torch.randperm(img.size()[0]).to(args.device)
+            target_a = labels
+            target_b = labels[rand_index]
+            bbx1, bby1, bbx2, bby2 = rand_bbox(img.size(), lam)
+            img[:, :, bbx1:bbx2, bby1:bby2] = img[rand_index, :, bbx1:bbx2, bby1:bby2]
+            lam = 1 - ((bbx2 - bbx1) * (bby2 - bby1) / (img.size()[-1] * img.size()[-2]))
+        
+        table_11_img, table_22_img, table_33_img = list(), list(), list()
+        for idx in range(img.size()[0]):
+            table_1_img, table_2_img, table_3_img = jigsaw_generator(img[idx, :, :, :], args.patches[0]), jigsaw_generator(img[idx, :, :, :], args.patches[1]), jigsaw_generator(img[idx, :, :, :], args.patches[2])
+            table_11_img.append(table_1_img)
+            table_22_img.append(table_2_img)
+            table_33_img.append(table_3_img)
+
+        table_11_img, table_22_img, table_33_img = torch.stack(table_11_img, 0), torch.stack(table_22_img, 0), torch.stack(table_33_img, 0)
+        table_11_img, table_22_img, table_33_img = table_11_img.to(args.device), table_22_img.to(args.device), table_33_img.to(args.device)
+        
+        optimizer.zero_grad()
+        with torch.cuda.amp.autocast(enabled=False):
+            output_1, _, _, _, _, _, _, _ =  model(table_11_img)     # patches[0]
+            if r > args.cut_prob:
+                loss = loss_fn(output_1, labels)
+            else:
+                loss = loss_fn(output_1, target_a) * lam + loss_fn(output_1, target_b) * (1. - lam)
+        losses += loss
+        scaler.scale(loss).backward()
+        scaler.step(optimizer)
+        scaler.update()
+
+        optimizer.zero_grad()
+        with torch.cuda.amp.autocast(enabled=False):
+            _, output_2, _, _, _, _, _, _ = model(table_22_img)     # patches[0]
+            if r > args.cut_prob:
+                loss = loss_fn(output_2, labels)
+            else:
+                loss = loss_fn(output_2, target_a) * lam + loss_fn(output_2, target_b) * (1. - lam)
+        losses += loss
+        scaler.scale(loss).backward()
+        scaler.step(optimizer)
+        scaler.update()
+
+        optimizer.zero_grad()
+        with torch.cuda.amp.autocast(enabled=False):
+            _, _, output_3, _, _, _, _, _ = model(table_33_img)     # patches[0]
+            if r > args.cut_prob:
+                loss = loss_fn(output_3, labels)
+            else:
+                loss = loss_fn(output_3, target_a) * lam + loss_fn(output_3, target_b) * (1. - lam)
+        losses += loss
+        scaler.scale(loss).backward()
+        scaler.step(optimizer)
+        scaler.update()
+
+        optimizer.zero_grad()
+        with torch.cuda.amp.autocast(enabled=False):
+            _, _, _, output_4, _, _, _, _ = model(img)     # patches[0]
+            if r > args.cut_prob:
+                loss = loss_fn(output_4, labels) * 2 
+            else:
+                loss = (loss_fn(output_4, target_a) * lam + loss_fn(output_4, target_b) * (1. - lam)) * 2
+        losses += loss
+        scaler.scale(loss).backward()
+        scaler.step(optimizer)
+        scaler.update()
+
+    return losses
+  
 def val(args, val_loader, model, criterion):
 
     model.eval()
@@ -378,6 +548,44 @@ def val_nce(args, val_loader, model, criterion, classifier=None):
 
     return {'loss': total_loss,
             'total_acc': total_acc.item() * 100,
+            'class_acc': acc_list}
+
+def val_fine(args, model, test_dl, loss_fn):
+    model.eval()
+    pred_list, label_list = torch.Tensor([]), torch.Tensor([])
+
+    test_loss, total, correct = 0, 0, 0
+    for idx, (image, _, label) in enumerate(tqdm(test_dl, desc = "Fine tester", position = 1, leave = False)):
+        image, label = image.float().to(args.device), label.type(torch.LongTensor).to(args.device)
+
+        with torch.cuda.amp.autocast():
+            output_1, output_2, output_3, output_concat, _, _, _, _ = model(image)
+            # output_1, output_2, output_3, output_concat = model(image)
+            outputs_com = output_1 + output_2 + output_3 + output_concat
+            loss = loss_fn(outputs_com, label)
+        
+        test_loss += loss.item()
+        _, pred = torch.max(outputs_com.data, 1)
+        total += label.size(0)
+        correct += pred.eq(label.data).cpu().sum()
+
+        pred_list = torch.cat([pred_list.cpu(), pred.cpu()], dim = 0)
+        label_list = torch.cat([label_list.cpu(), label.cpu()], dim = 0)
+
+    test_acc = 100. * float(correct) / total
+    test_loss = test_loss / len(test_dl)
+    # test_f1, test_precision, test_recall = get_metrics(args, label_list, pred_list)
+
+    # confusion matrix
+    matrix = confusion_matrix(label_list, pred_list)
+    acc_list = matrix.diagonal()/matrix.sum(axis=1)
+    acc_list = [round(x*100, 2) for x in acc_list]
+
+    class_name = ['00_Normal', '01_Spot', '03_Solid', '04_Dark Dust', '05_Shell', '06_Fiber', '07_Smear', '08_Pinhole', '11_OutFo']
+    plot_confusion_matrix(matrix, class_name, './img/{}_confusion_matrix.png'.format('exp:6'))
+
+    return {'loss': test_loss,
+            'total_acc': test_acc,
             'class_acc': acc_list}
 
 if __name__ == '__main__':

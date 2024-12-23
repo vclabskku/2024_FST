@@ -10,7 +10,7 @@ import torchvision.transforms as transforms
 from dataset.utils import *
 # from .utils import ColorJitter, Lighting
 from utils.opt import get_opts
-
+from utils.fgssl import jigsaw_generator
 
 class FSTDataset(Dataset):
     def __init__(self, args, data_json, is_train=True, augment=['flip', 'rotate'], crop=True, model_type='imagenet'):
@@ -46,6 +46,9 @@ class FSTDataset(Dataset):
         self.labels = adjusted_labels
         self.image_names = image_names
 
+        self.cls_num_list = []
+        for i in set(self.labels):
+            self.cls_num_list.append(self.labels.count(i))
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
         if self.args.image_cut == 'crop':
@@ -96,6 +99,48 @@ class FSTDataset(Dataset):
         return img, names, target
 
     def __len__(self) -> int:
+        return len(self.images)
+
+class barlowDataset(Dataset):
+    def __init__(self, args, data_json):
+        self.args = args
+        with open(data_json, 'r') as json_file:
+            data = json.load(json_file)
+        images = []
+        labels = []
+        for key, value in data.items():
+            images.append(value['image_path'])
+            labels.append(value['label'])
+        print('class list : ', set(labels))
+
+        self.images = images
+        self.labels = labels
+        self.transforms_1 = transforms.Compose([
+                    transforms.CenterCrop(args.resolution),
+                    transforms.RandomHorizontalFlip(p=0.5),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                        std=[0.229, 0.224, 0.225])])
+
+        self.transforms_2 = transforms.Compose([
+                    transforms.CenterCrop(args.resolution),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                        std=[0.229, 0.224, 0.225])])
+
+
+    def __getitem__(self, idx):
+        image_name = self.images[idx]
+        img = Image.open(image_name).convert('RGB')
+        labels = self.labels[idx]
+
+        img_1 = self.transforms_1(img)   # origin
+        img_2 = self.transforms_2(img)   # transform
+        table_1_img, table_2_img, table_3_img = jigsaw_generator(img_1, self.args.patches[0]), jigsaw_generator(img_1, self.args.patches[1]), jigsaw_generator(img_1, self.args.patches[2])
+            # 2         # 4         # 8
+        return  img_1, table_1_img,  table_2_img, table_3_img, img_2
+
+    def __len__(self):
         return len(self.images)
 
 
