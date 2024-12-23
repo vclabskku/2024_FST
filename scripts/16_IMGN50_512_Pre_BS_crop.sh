@@ -7,7 +7,7 @@ python train.py \
     --val_list test \
     --test_list test \
     --depth 50 \
-    --resume_weights /mnt/hdd0/FST/_prev_20220726/weights/imagenet/resnet50-11ad3fa6.pth \
+    --resume_weights ./_prev_20220726/weights/imagenet/resnet50-11ad3fa6.pth \
     --loss_function LogitAdjust \
     --image_cut crop \
     --gpu ${GPU} \
