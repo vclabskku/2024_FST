@@ -18,6 +18,7 @@ from utils.opt import get_opts
 from utils.pretext import lorotE, lorotI, rotation
 from dataset.datasets import FSTDataset, barlowDataset
 import models.resnet as RN
+from models.dino import Create_DINO
 from models.pmg import PMG
 from utils.fgssl import get_ce_optimizer, get_barlow_optimizer, jigsaw_generator, barlow_criterion, cosine_anneal_schedule
 
@@ -72,6 +73,13 @@ def main(args):
     elif 'ViT' in args.model_name:
         # if add more model, add here
         pass
+    elif args.model_name.startswith('dinov2'):
+        # 'dinov2_vits14' / 'dinov2_vitb14' / 'dinov2_vitl14' / 'dinov2_vitg14' / 'dinov2_vits14_reg' / 'dinov2_vitb14_reg' / 'dinov2_vitl14_reg' / 'dinov2_vitg14_reg'
+        if args.concat:
+            sample = train_dataset[0][0][0].unsqueeze(0)
+        else:
+            sample = train_dataset[0][0].unsqueeze(0)
+        model = Create_DINO(args.model_name, sample, args.batch_size, args.concat, args.num_classes)
     else:
         raise Exception('unknown network architecture: {}'.format(args.model_name))
 
@@ -164,6 +172,11 @@ def main(args):
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 
                                                     step_size=len(train_loader)*args.step_size, 
                                                     gamma=args.gamma)
+    elif args.model_name.startswith('dinov2'):
+        optimizer = torch.optim.SGD(model.optim_param_groups, momentum=0.9, weight_decay=0)
+        max_iter = 10 * 1250
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, max_iter, eta_min=0)   
+
     else:
         barlow_optimizer = get_barlow_optimizer(args, model)
         ce_optimizer = get_ce_optimizer(args, model)
@@ -173,6 +186,7 @@ def main(args):
     best_acc = 0.
     best_epoch = 0
     best_class_acc = None
+    is_best = False
     for epoch in range(args.epochs):
         is_best=False
         if args.loss_function == 'contrastive':
@@ -189,29 +203,46 @@ def main(args):
                 result = val_fine(args, model, val_loader, criterion)
         else:
             train(args, train_loader, model, criterion, precriterion, optimizer, scheduler, epoch, BCL_criterion=BCL_criterion)
-            result = val(args, val_loader, model, criterion)
+            if args.model_name.startswith('dinov2'):
+                result, best_key = val_dino(args, val_loader, model, criterion)
+            else:
+                result = val(args, val_loader, model, criterion)
+
         print("\nEpoch [{:03d}/{:03d}]\tVal Loss {:.3f}\t Val Acc {:.3f}"\
                 .format(epoch+1, args.epochs, result['loss'], result['total_acc']), flush=True)
         print("Class Acc {}".format(result['class_acc']), flush=True)
 
-        is_best = True
-        best_epoch = epoch + 1
-        best_acc = max(best_acc, result['total_acc'])
-        best_class_acc = result['class_acc']
+        if best_acc < result['total_acc']:
+            is_best = True
+            best_epoch = epoch + 1
+            best_acc = max(best_acc, result['total_acc'])
+            best_class_acc = result['class_acc']
 
         print("------------------------------------------------------------------------")
         model_filename = os.path.join(save_dir, f'{args.exp_name}.pth')
         if epoch > args.epochs // 2:
             if is_best:
-                torch.save(
+                if args.model_name.startswith('dinov2'):
+                    torch.save(
                     {
                         'epoch': epoch+1,
                         'state_dict': model.state_dict(),
                         'optimizer': optimizer.state_dict(),
                         'scheduler': scheduler.state_dict(),
+                        'best_linear' : best_key
                     },
                     model_filename
                 )
+                else:
+                    torch.save(
+                        {
+                            'epoch': epoch+1,
+                            'state_dict': model.state_dict(),
+                            'optimizer': optimizer.state_dict(),
+                            'scheduler': scheduler.state_dict(),
+                        },
+                        model_filename
+                    )
     print("\nBest Epoch {:03d} \t Best Acc {:.3f}" \
           .format(best_epoch, best_acc), flush=True)
     print("Best Class Acc {}".format(best_class_acc), flush=True)
@@ -224,7 +255,8 @@ def train(args, train_loader, model, criterion, precriterion, optimizer, schedul
     n_batch = len(train_loader)
     bs = args.batch_size
     for batch_idx, (images, names, labels) in enumerate(train_loader):
-        images = images.cuda()
+        if not args.concat:
+            images = images.cuda()
         labels = labels.cuda()
         if args.pretext == 'lorotE':
             images, rotlabel = lorotE(images)
@@ -232,6 +264,10 @@ def train(args, train_loader, model, criterion, precriterion, optimizer, schedul
             images, rotlabel = lorotI(images)
         if args.model_name == 'CNN':
             logits, plogits = model(images, return_feature=False, layers=None, input_layers=None, onlyfc=False)
+        elif args.model_name.startswith('dinov2'):
+            logits = model(images)
+            losses = {f"loss_{k}": criterion(v, labels) for k, v in logits.items()}
+            loss = sum(losses.values())
         else:
             if args.loss_function == 'BalSCL':
                 images1, _ = rotation(images)
@@ -587,6 +623,63 @@ def val_fine(args, model, test_dl, loss_fn):
     return {'loss': test_loss,
             'total_acc': test_acc,
             'class_acc': acc_list}
+
+def val_dino(args, val_loader, model, criterion):
+
+    model.eval()
+    n_image = len(val_loader.dataset)
+    n_batch = len(val_loader)
+    bs = args.batch_size
+    total_loss = 0.
+
+    total_preds_per_classifier = {k: torch.zeros(n_image, dtype=torch.long) for k in model.linear_classifiers.classifiers_dict.keys()}
+    total_labels = torch.zeros(n_image, dtype=torch.long)
+
+    with torch.no_grad():
+        for batch_idx, (images, _, labels) in enumerate(val_loader):
+            labels = labels.cuda()
+
+            logits = model(images)
+            losses = {f"loss_{k}": criterion(v, labels) for k, v in logits.items()}
+            loss = sum(losses.values())
+            total_loss += loss.item()
+            total_idx = bs * batch_idx
+
+            # Process outputs for each classifier
+            for k, v in logits.items():
+                preds = torch.argmax(v, dim=1)
+        
+                if batch_idx == n_batch - 1:
+                    total_preds_per_classifier[k][total_idx:] = preds.cpu()
+                    total_labels[total_idx:] = labels.cpu()
+                else:
+                    total_preds_per_classifier[k][total_idx:total_idx + bs] = preds.cpu()
+                    total_labels[total_idx:total_idx + bs] = labels.cpu()
+
+    # Compute accuracy for each classifier
+    results = {}
+    for k, preds in total_preds_per_classifier.items():
+        total_acc = (total_labels == preds).sum().item() / n_image * 100
+        total_loss /= n_image
+        matrix = confusion_matrix(total_labels.numpy(), preds.numpy())
+        acc_list = matrix.diagonal() / matrix.sum(axis=1)
+        acc_list = [round(x * 100, 2) for x in acc_list]
+        
+        # Save results 
+        results[k] = {
+            'loss' : total_loss,
+            'total_acc': total_acc,
+            'class_acc': acc_list,
+            'confusion_matrix': matrix
+        }
+
+        # plot confusion
+        # class_name = ['00_Normal', '01_Spot', '03_Solid', '04_Dark Dust', '05_Shell', '06_Fiber', '07_Smear', '08_Pinhole', '11_OutFo']
+        # plot_confusion_matrix(matrix, class_name, './img/{}_confusion_matrix_ACC_{:.3f}.png'.format(k, total_acc))
+
+    best_key = max(results, key=lambda k: results[k]['total_acc'])
+    return results[best_key], best_key
+
 
 if __name__ == '__main__':
     warnings.filterwarnings(action='ignore')

@@ -56,6 +56,9 @@ def get_opts():
     parser.add_argument("--cut_prob", type = float, default = -1.1, required = False)
     parser.add_argument("--beta2", type = int, default = 1, required = False)
 
+    # dino
+    parser.add_argument('--concat', type=bool, default=False)
+
     # etc
     parser.add_argument('--gpus', nargs="+", type=int, default=[0])
     parser.add_argument('--exp_name', type=str, default='exp')

@@ -74,6 +74,19 @@ class FSTDataset(Dataset):
                 transforms.ToTensor(),
                 normalize,
             ])
+        
+        if self.args.concat:
+            self.crop_transform = transforms.Compose([
+                transforms.CenterCrop(args.resolution),
+                transforms.ToTensor(),
+                normalize
+            ])
+
+            self.resize_transform = transforms.Compose([
+                transforms.Resize((args.resolution, args.resolution)),
+                transforms.ToTensor(),
+                normalize
+            ])
 
     def _load_meta(self) -> None:
         path = os.path.join(self.root, self.base_folder, self.meta['filename'])
@@ -95,7 +108,12 @@ class FSTDataset(Dataset):
         """
         img, target, names = self.images[index], self.labels[index], self.image_names[index]
         if self.transform is not None:
-            img = self.transform(img)
+            if self.resize_transform is not None and self.crop_transform is not None: #self.args.concat == True
+                img1 = self.resize_transform(img)
+                img2 = self.crop_transform(img)
+                img = [img1, img2]
+            else:
+                img = self.transform(img)
         return img, names, target
 
     def __len__(self) -> int:
