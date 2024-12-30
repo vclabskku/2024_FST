@@ -69,10 +69,7 @@ def main(args):
     # model
     print(">> Load the model...", flush=True)
     if args.model_name == 'resnet':
-        model = RN.ResNet(args.model_name, args.depth, args.num_classes, args.bottleneck, args.pretext)
-    
-    elif args.model_name == 'resnet':
-        model = RN.ResNet(args.model_name, args.depth, args.num_classes, args.bottleneck, args.pretext)
+        model = RN.ResNet(args.model_name, args.depth, args.num_classes, args.bottleneck, args.pretext, args.resolution)
     elif args.model_name == 'ResNet_patch16':
         model = RN.ResNet_patch16(args.model_name, args.depth, args.num_classes, args.bottleneck, args.pretext, patch_num=args.patch_num)
     elif 'ViT' in args.model_name:
@@ -121,7 +118,7 @@ def main(args):
             raise Exception('FG-SSL needs pretrained resnet50 now.')
         for param in model.parameters():
             param.requires_grad = True
-        model = PMG(args, model, args.featdim, args.num_classes)
+        model = PMG(args, model, args.featdim, args.num_classes, args.resolution)
 
     num_params = count_parameters(model)
     print("Total Parameter: \t%2.1fM" % num_params)
@@ -217,24 +214,23 @@ def main(args):
                 .format(epoch+1, args.epochs, result['loss'], result['total_acc']), flush=True)
         print("Class Acc {}".format(result['class_acc']), flush=True)
 
+        is_best = False
         if best_acc < result['total_acc']:
-            is_best = True
-            best_epoch = epoch + 1
-            best_acc = max(best_acc, result['total_acc'])
+            best_acc = result['total_acc']
             best_class_acc = result['class_acc']
+            best_epoch = epoch + 1
+            is_best = True
 
         print("------------------------------------------------------------------------")
-        model_filename = os.path.join(save_dir, f'{args.exp_name}.pth')
-        if epoch > args.epochs // 2:
+        if epoch >= args.epochs // 2:
             if is_best:
-                if args.model_name.startswith('dinov2'):
-                    torch.save(
+                model_filename = os.path.join(save_dir, f'{args.exp_name}_epoch{best_epoch}.pth')
+                torch.save(
                     {
                         'epoch': epoch+1,
                         'state_dict': model.state_dict(),
-                        'optimizer': optimizer.state_dict(),
-                        'scheduler': scheduler.state_dict(),
-                        'best_linear' : best_key
+                        'optimizer': optimizer.state_dict() if not args.fgssl else ce_optimizer,
+                        'scheduler': scheduler.state_dict() if not args.fgssl else None,
                     },
                     model_filename
                 )
@@ -585,7 +581,7 @@ def val_nce(args, val_loader, model, criterion, classifier=None):
 
     # plot confusion
 
-    plot_confusion_matrix(matrix, class_name, './img/{}_confusion_matrix.png'.format(args.exp_name))
+    plot_confusion_matrix(matrix, class_name,  './img/{}_confusion_matrix_ACC_{:.3f}.png'.format(args.exp_name, total_acc.item() * 100))
 
     return {'loss': total_loss,
             'total_acc': total_acc.item() * 100,
@@ -623,7 +619,7 @@ def val_fine(args, model, test_dl, loss_fn):
     acc_list = [round(x*100, 2) for x in acc_list]
 
     class_name = ['00_Normal', '01_Spot', '03_Solid', '04_Dark Dust', '05_Shell', '06_Fiber', '07_Smear', '08_Pinhole', '11_OutFo']
-    plot_confusion_matrix(matrix, class_name, './img/{}_confusion_matrix.png'.format('exp:6'))
+    plot_confusion_matrix(matrix, class_name,  './img/{}_confusion_matrix_ACC_{:.3f}.png'.format(args.exp_name, test_acc))
 
     return {'loss': test_loss,
             'total_acc': test_acc,

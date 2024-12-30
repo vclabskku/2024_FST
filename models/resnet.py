@@ -91,8 +91,8 @@ class Bottleneck(nn.Module):
         return out
 
 class ResNet(nn.Module):
-    # model_name, args.depth, args.num_classes, args.bottleneck, args.prete
-    def __init__(self, dataset, depth, num_classes, bottleneck=False, pretext='None'):
+    # model_name, args.depth, args.num_classes, args.bottleneck, args.prete, args.resolution
+    def __init__(self, dataset, depth, num_classes, bottleneck=False, pretext='None', resolution=224):
         super(ResNet, self).__init__()        
         self.dataset = dataset
         self.fc2 = None
@@ -109,7 +109,7 @@ class ResNet(nn.Module):
         self.layer2 = self._make_layer(blocks[depth], 128, layers[depth][1], stride=2)
         self.layer3 = self._make_layer(blocks[depth], 256, layers[depth][2], stride=2)
         self.layer4 = self._make_layer(blocks[depth], 512, layers[depth][3], stride=2)
-        self.avgpool = nn.AvgPool2d(7)
+        self.avgpool = nn.AvgPool2d(resolution//32)
         self.fc_in_dim = 512 * blocks[depth].expansion
         self.fc = nn.Linear(512 * blocks[depth].expansion, num_classes)
         # FC2 is for pretext task
