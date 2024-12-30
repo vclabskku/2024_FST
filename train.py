@@ -630,7 +630,8 @@ def val_dino(args, val_loader, model, criterion):
     with torch.no_grad():
         for batch_idx, (images, _, labels) in enumerate(val_loader):
             labels = labels.cuda()
-
+            if not args.concat:
+                images = images.cuda()
             logits = model(images)
             losses = {f"loss_{k}": criterion(v, labels) for k, v in logits.items()}
             loss = sum(losses.values())
