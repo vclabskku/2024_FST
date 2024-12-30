@@ -42,6 +42,7 @@ ex) EXP_NAME=1_CNN3_512_BS_resize
    - **Average-pooled Patch Token 사용 여부**  
      - **Yes**: Class Token과 Average-pooled Patch Token을 함께 사용  
      - **No**: Class Token만 사용
+     
      Default:  
      `{False, True}`  
      예시:  
