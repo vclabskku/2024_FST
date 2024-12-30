@@ -9,7 +9,7 @@ python train.py \
     --test_list test \
     --depth 50 \
     --resume_weights ./_prev_20220726/weights/imagenet/resnet50-11ad3fa6.pth \
-    --epochs 200 \
+    --epochs 1000 \
     --lr 1e-2 \
     --weight_decay 5e-4 \
     --image_cut crop \

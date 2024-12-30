@@ -2,13 +2,13 @@ import torch.nn as nn
 import torch
 
 class PMG(nn.Module):
-    def __init__(self, args, model, feature_size, classes_num):
+    def __init__(self, args, model, feature_size, classes_num, resolution=224):
         super(PMG, self).__init__()
 
         self.features = model
-        self.max1 = nn.MaxPool2d(kernel_size = 28, stride = 28)
-        self.max2 = nn.MaxPool2d(kernel_size = 14, stride = 14)
-        self.max3 = nn.MaxPool2d(kernel_size = 7, stride = 7)
+        self.max1 = nn.MaxPool2d(kernel_size = resolution // 8, stride = resolution // 8)
+        self.max2 = nn.MaxPool2d(kernel_size = resolution // 16, stride = resolution // 16)
+        self.max3 = nn.MaxPool2d(kernel_size = resolution // 32, stride = resolution // 32)
         self.num_ftrs = 2048 * 1 * 1
         self.elu = nn.ELU(inplace = True)
         
