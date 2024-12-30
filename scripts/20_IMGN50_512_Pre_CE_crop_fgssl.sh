@@ -1,5 +1,5 @@
 EXP_NAME=20_IMGN50_512_Pre_CE_crop_fgssl
-GPU=0
+GPU=1
 
 python train.py \
     --batch_size 100 \

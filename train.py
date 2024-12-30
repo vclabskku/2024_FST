@@ -234,16 +234,7 @@ def main(args):
                     },
                     model_filename
                 )
-                else:
-                    torch.save(
-                        {
-                            'epoch': epoch+1,
-                            'state_dict': model.state_dict(),
-                            'optimizer': optimizer.state_dict(),
-                            'scheduler': scheduler.state_dict(),
-                        },
-                        model_filename
-                    )
+            
     print("\nBest Epoch {:03d} \t Best Acc {:.3f}" \
           .format(best_epoch, best_acc), flush=True)
     print("Best Class Acc {}".format(best_class_acc), flush=True)
