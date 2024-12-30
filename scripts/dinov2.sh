@@ -9,6 +9,8 @@ python train.py \
     --image_cut crop \
     --resolution 224 \
     --gpu ${GPU} \
-    --concat True \
     --epochs 100 \
+    --lr_list 0.1 \
+    --last_blocks_list 1 \
+    --avg_pool_list False \
     --exp_name ${EXP_NAME} | tee ./logs/${EXP_NAME}.log
