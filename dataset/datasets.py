@@ -55,6 +55,10 @@ class FSTDataset(Dataset):
             size_transform = transforms.CenterCrop(args.resolution)
         elif self.args.image_cut == 'resize':
             size_transform = transforms.Resize((args.resolution, args.resolution))
+        elif self.args.image_cut == 'patch':
+            patch_size = int(args.patch_num**0.5)
+            size_transform = transforms.Resize((args.resolution*patch_size, args.resolution*patch_size))
+
 
         if is_train:
             self.transform = transforms.Compose([
