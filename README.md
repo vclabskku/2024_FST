@@ -19,20 +19,39 @@ ex) EXP_NAME=1_CNN3_512_BS_resize
 ```bash
   bash scripts/dinov2.sh
 ```
-  1. linear probing에 해당하는 실험 파라미터는 아래와 같음. 해당 파일을 실행하면, 가능한 모든 조합에 대해 모두 실행됨
-      learning rate : {0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.5}
-         ```
-         ex) --lr_list 0.2, 0.3, 0.5
-         ```
-      dino의 output block 개수 (뒤에서부터) : {1, 4}
-         ```
-         ex) --last_blocks_list 1 2
-         ```     
-      average-pooled patch token을 class token과 함께 사용할지 여부 (No인 경우 class token만 사용) : {Yes, No}
-         ```
-         ex) avg_pool_list False
-         ```
-  3. --concat augmentation의 경우 shell 파일 실행 시 --concat argument를 추가하면 됨
+1. **Linear Probing 실험 파라미터**
+
+   해당 파일을 실행하면 가능한 모든 조합에 대해 실험이 진행됩니다.
+
+   - **Learning Rate**  
+     Default:  
+     `{0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.5}`  
+     예시:  
+     ```bash
+     --lr_list 0.2, 0.3, 0.5
+     ```
+
+   - **DINO의 Output Block 개수 (뒤에서부터)**  
+     Default:  
+     `{1, 4}`  
+     예시:  
+     ```bash
+     --last_blocks_list 1 2
+     ```
+
+   - **Average-pooled Patch Token 사용 여부**  
+     - **Yes**: Class Token과 Average-pooled Patch Token을 함께 사용  
+     - **No**: Class Token만 사용
+     Default:  
+     `{False, True}`  
+     예시:  
+     ```bash
+     --avg_pool_list False
+     ```
+
+2. **Concat Augmentation**
+
+   `concat` augmentation을 사용하려면, shell 파일 실행 시 `--concat` 인자를 추가하면 됩니다.
   
 ### About Arguments (For more details, check ./utils/opt.py)
 --model_name 
