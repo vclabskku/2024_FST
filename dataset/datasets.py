@@ -107,13 +107,15 @@ class FSTDataset(Dataset):
             tuple: (image, target) where target is index of the target class.
         """
         img, target, names = self.images[index], self.labels[index], self.image_names[index]
-        if self.transform is not None:
-            if self.resize_transform is not None and self.crop_transform is not None: #self.args.concat == True
-                img1 = self.resize_transform(img)
-                img2 = self.crop_transform(img)
-                img = [img1, img2]
-            else:
+        
+        if self.args.concat == True:
+            img1 = self.resize_transform(img)
+            img2 = self.crop_transform(img)
+            img = [img1, img2]
+        else:
+            if self.transform is not None:
                 img = self.transform(img)
+
         return img, names, target
 
     def __len__(self) -> int:
