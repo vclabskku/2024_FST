@@ -18,7 +18,7 @@ ex) EXP_NAME=1_CNN3_512_BS_resize
 - DINO v2 linear probing 실험 아래 코드로 실행 가능
 ```bash
   bash scripts/dinov2.sh
-
+```
   1. linear probing에 해당하는 실험 파라미터는 아래와 같음. 해당 파일을 실행하면, 가능한 모든 조합에 대해 모두 실행됨
       learning rate : {0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.5}
          ```
