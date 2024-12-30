@@ -1,5 +1,8 @@
 import argparse
 
+def str2bool(v):
+    return v.lower() in ('true', '1')
+
 def get_opts():
     parser = argparse.ArgumentParser()
 
@@ -57,7 +60,10 @@ def get_opts():
     parser.add_argument("--beta2", type = int, default = 1, required = False)
 
     # dino
-    parser.add_argument('--concat', type=bool, default=False)
+    parser.add_argument('--concat', action='store_true', default=False)
+    parser.add_argument('--lr_list', nargs="+", type=float, default=[0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.5])
+    parser.add_argument("--last_blocks_list", nargs="+", type=int, default=[1, 4])
+    parser.add_argument('--avg_pool_list', nargs="+", type=str2bool, default=[False, True])
 
     # etc
     parser.add_argument('--gpus', nargs="+", type=int, default=[0])

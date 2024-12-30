@@ -81,7 +81,7 @@ def main(args):
             sample = train_dataset[0][0][0].unsqueeze(0)
         else:
             sample = train_dataset[0][0].unsqueeze(0)
-        model = Create_DINO(args.model_name, sample, args.batch_size, args.concat, args.num_classes)
+        model = Create_DINO(args.model_name, sample, args.batch_size, args.concat, args.num_classes, args.lr_list, args.last_blocks_list, args.avg_pool_list)
     else:
         raise Exception('unknown network architecture: {}'.format(args.model_name))
 

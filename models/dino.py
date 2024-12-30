@@ -9,7 +9,7 @@ def create_linear_input(x_tokens_list, use_n_blocks, use_avgpool):
         output = torch.cat(
             (
                 output,
-                torch.mean(x_tokens_list[-2][0], dim=1),  # patch tokens
+                torch.mean(x_tokens_list[-1][0], dim=1),  # patch tokens
             ),
             dim=-1,
         )
@@ -73,12 +73,12 @@ class AllClassifiers(nn.Module):
 def scale_lr(learning_rates, batch_size):
     return learning_rates * batch_size / 256.0
 
-def setup_linear_classifiers(sample_output, n_last_blocks_list, learning_rates, batch_size, concat, num_classes=1000):
+def setup_linear_classifiers(sample_output, n_last_blocks_list, learning_rates, batch_size, concat, avg_pool_list, num_classes=1000):
     linear_classifiers_dict = nn.ModuleDict()
     optim_param_groups = []
 
     for n in n_last_blocks_list:
-        for avgpool in [False, True]:
+        for avgpool in avg_pool_list:
             for _lr in learning_rates:
                 lr = scale_lr(_lr, batch_size)
                 if concat:
@@ -116,20 +116,21 @@ class ModelWithIntermediateLayers(nn.Module):
     
     
 class Create_DINO(nn.Module):
-    def __init__(self, model_name, sample, batch_size, concat, num_classes):
+    def __init__(self, model_name, sample, batch_size, concat, num_classes, lr_list, n_last_blocks_list, avg_pool_list):
         super().__init__()
         model = torch.hub.load('facebookresearch/dinov2', model_name)
         autocast_ctx = partial(torch.cuda.amp.autocast, enabled=True, dtype=torch.float)
 
-        self.learning_rates = [0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.5]
-        self.n_last_blocks_list = [1, 4]
+        self.learning_rates = lr_list
+        self.n_last_blocks_list = n_last_blocks_list
         self.concat = concat
+        self.avg_pool_list = avg_pool_list
 
         self.feature_model = ModelWithIntermediateLayers(model, max(self.n_last_blocks_list), autocast_ctx)
         sample_output = self.feature_model(sample)
 
         self.linear_classifiers, self.optim_param_groups = setup_linear_classifiers(
-            sample_output, self.n_last_blocks_list, self.learning_rates, batch_size, self.concat, num_classes
+            sample_output, self.n_last_blocks_list, self.learning_rates, batch_size, self.concat, self.avg_pool_list, num_classes
         )
 
     def forward(self, images):
