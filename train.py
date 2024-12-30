@@ -70,6 +70,11 @@ def main(args):
     print(">> Load the model...", flush=True)
     if args.model_name == 'resnet':
         model = RN.ResNet(args.model_name, args.depth, args.num_classes, args.bottleneck, args.pretext)
+    
+    elif args.model_name == 'resnet':
+        model = RN.ResNet(args.model_name, args.depth, args.num_classes, args.bottleneck, args.pretext)
+    elif args.model_name == 'ResNet_patch16':
+        model = RN.ResNet_patch16(args.model_name, args.depth, args.num_classes, args.bottleneck, args.pretext, patch_num=args.patch_num)
     elif 'ViT' in args.model_name:
         # if add more model, add here
         pass
