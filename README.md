@@ -8,6 +8,7 @@ ln -s /mnt/hdd0/FST/data ./
 
 
 pip install seaborn
+pip install torchmetrics
 
 ## How to use
 scripts 안에 있는 shell 파일 참고해서 EXP_NAME 및 파라미터 수정 후 실행.
@@ -19,6 +20,12 @@ ex) EXP_NAME=1_CNN3_512_BS_resize
 ```bash
   bash scripts/dinov2.sh
 ```
+
+- Fine-grained Self-Supervision 실험 아래 코드로 실행 가능
+```bash
+  bash scripts/20_IMGN50_512_Pre_CE_crop_fgssl.sh
+```
+
 1. **Linear Probing 실험 파라미터**
 
    해당 파일을 실행하면 가능한 모든 조합에 대해 실험이 진행됩니다.
@@ -53,7 +60,27 @@ ex) EXP_NAME=1_CNN3_512_BS_resize
 2. **Concat Augmentation**
 
    `concat` augmentation을 사용하려면, shell 파일 실행 시 `--concat` 인자를 추가하면 됩니다.
-  
+
+3. **Fine-Grained SSL**
+
+   `fgssl` 학습을 하려면, shell 파일 실행 시 `--fgssl` 인자를 추가하면 됩니다.
+
+   - **Patch size**  
+     학습 시 patch의 크기를 설정할 수 있습니다.
+     예시:  
+     ```bash
+     --patches 16 8 4
+     ```
+
+   - **Classifier dimension**  
+     각 Block의 Classifier의 dimension을 설정할 수 있습니다.
+     Default:  
+     `512`  
+     예시:  
+     ```bash
+     --featdim 512
+     ```
+
 ### About Arguments (For more details, check ./utils/opt.py)
 --model_name 
     CNN :
