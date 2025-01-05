@@ -14,7 +14,7 @@ def get_opts():
     # dataloader
     parser.add_argument('--batch_size', type=int, default=64)
     parser.add_argument('--resolution', type=int, default=224)
-    parser.add_argument('--num_workers', type=int, default=24)
+    parser.add_argument('--num_workers', type=int, default=0)
     parser.add_argument('--train_list', type=str, default="train")
     parser.add_argument('--val_list', type=str, default="val")
     parser.add_argument('--test_list', type=str, default="test")
@@ -27,6 +27,7 @@ def get_opts():
     parser.add_argument('--resume_weights', type=str, help='resume_weights')
     parser.add_argument('--num_layer', type=int, default=3)
     parser.add_argument('--hidden_dim', type=int, default=256)
+    parser.add_argument('--patch_num', type=int, default=16)
 
     # train
     parser.add_argument('--epochs', type=int, default=200)

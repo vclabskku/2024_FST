@@ -1,5 +1,5 @@
-EXP_NAME=18_IMGN50_512_Pre_BS_resize_64patch
-GPU=7
+EXP_NAME=21_IMGN50_512_Pre_BS_resize_64patch
+GPU=0
 
 python train.py \
     --model_name ResNet_patch16 \
@@ -11,7 +11,7 @@ python train.py \
     --loss_function LogitAdjust \
     --image_cut patch \
     --gpu ${GPU} \
-    --patch_num 64 \
+    --patch_num 16 \
     --exp_name ${EXP_NAME} | tee ./logs/${EXP_NAME}.log
 
 # model_name

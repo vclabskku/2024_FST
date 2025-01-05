@@ -142,3 +142,20 @@ ex) EXP_NAME=1_CNN3_512_BS_resize
      ```
 
 </details>
+
+## Patch-wize image concatenation
+빠른 실행 명령어
+```bash 
+  bash scripts/21_IMGN50_512_Pre_BS_patch.sh
+```
+
+<details>
+<summary>Details</summary>
+
+   - **patch_num**  
+     패치의 개수를 조절하는 argument입니다. 64로 설정하면 8X8 모양의 패치를 만들어 이미지를 concat합니다.
+     ```bash
+     --patches 64
+     ```
+
+</details>
