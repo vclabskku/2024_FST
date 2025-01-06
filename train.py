@@ -189,6 +189,14 @@ def main(args):
     best_epoch = 0
     best_class_acc = None
     is_best = False
+    
+    if args.eval:
+        ### Only evaluation
+        print("\nBest Epoch {:03d} \t Best Acc {:.3f}".format(best_epoch, best_acc), flush=True)
+        print("Best Class Acc {}".format(best_class_acc), flush=True)
+        print("<< Evaluation Finished.\n")
+        return
+
     for epoch in range(args.epochs):
         is_best=False
         if args.loss_function == 'contrastive':

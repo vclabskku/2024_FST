@@ -70,4 +70,6 @@ def get_opts():
     parser.add_argument('--gpus', nargs="+", type=int, default=[0])
     parser.add_argument('--exp_name', type=str, default='exp')
 
+    # evaluation
+    parser.add_argument('--eval', action='store_true', default=False)
     return parser.parse_args()

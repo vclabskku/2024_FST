@@ -47,7 +47,7 @@ docker run \
 pip -r requirements.txt
 ```
 
-# Training 학습.
+# Training 학습 & Evaluation 평가.
 scripts 안에 있는 shell 파일 참고해서 EXP_NAME 및 파라미터 수정 후 실행.
 - EXP_NAME : 실험번호_실험명_하이퍼파라미터
 ```
@@ -55,6 +55,9 @@ ex) EXP_NAME=1_CNN3_512_BS_resize
 ```
 
 ## Baseline
+
+### Training
+
 빠른 실행 명령어
 ```bash
   bash scripts/13_IMGN50_512_Pre_CE_resize.sh
@@ -67,7 +70,80 @@ ex) EXP_NAME=1_CNN3_512_BS_resize
 
 위의 option에 따라 13~16번 중 Shell 파일을 선택하여 실행하면 됩니다.
 
+### Evaluation
+
+TODO
+
+
+## Patch-wize image concatenation
+
+### Training
+
+빠른 실행 명령어
+```bash 
+  bash scripts/21_IMGN50_512_Pre_BS_patch.sh
+```
+
+<details>
+<summary>Details</summary>
+
+   - **patch_num**  
+     패치의 개수를 조절하는 argument입니다. 64로 설정하면 8X8 모양의 패치를 만들어 이미지를 concat합니다.
+     ```bash
+     --patches 64
+     ```
+
+</details>
+
+### Evaluation
+
+TODO
+
+
+
+## Fine-grained Self-Supervision
+
+### Training
+
+빠른 실행 명령어
+```bash 
+  bash scripts/20_IMGN50_512_Pre_CE_crop_fgssl.sh
+```
+
+<details>
+<summary>Details</summary>
+**Fine-Grained SSL**
+
+   `fgssl` 학습을 하려면, shell 파일 실행 시 `--fgssl` 인자를 추가하면 됩니다.
+
+   - **Patch size**  
+     학습 시 patch의 크기를 설정할 수 있습니다. 복수개 사용 가능.
+     예시:  
+     ```bash
+     --patches 16 8 4
+     ```
+
+   - **Classifier dimension**  
+     각 Block의 Classifier의 dimension을 설정할 수 있습니다.
+     Default:  
+     `512`  
+     예시:  
+     ```bash
+     --featdim 512
+     ```
+
+</details>
+
+### Evaluation
+
+TODO
+
+
+
 ## DINOv2 linear probing 
+
+### Training
+
 빠른 실행 명령어
 ```bash
   bash scripts/dinov2.sh
@@ -119,54 +195,14 @@ ex) EXP_NAME=1_CNN3_512_BS_resize
 
 </details>
 
+### Evaluation
+
+TODO
 
 
-## Fine-grained Self-Supervision
-빠른 실행 명령어
-```bash 
-  bash scripts/20_IMGN50_512_Pre_CE_crop_fgssl.sh
-```
 
-<details>
-<summary>Details</summary>
-**Fine-Grained SSL**
 
-   `fgssl` 학습을 하려면, shell 파일 실행 시 `--fgssl` 인자를 추가하면 됩니다.
 
-   - **Patch size**  
-     학습 시 patch의 크기를 설정할 수 있습니다. 복수개 사용 가능.
-     예시:  
-     ```bash
-     --patches 16 8 4
-     ```
-
-   - **Classifier dimension**  
-     각 Block의 Classifier의 dimension을 설정할 수 있습니다.
-     Default:  
-     `512`  
-     예시:  
-     ```bash
-     --featdim 512
-     ```
-
-</details>
-
-## Patch-wize image concatenation
-빠른 실행 명령어
-```bash 
-  bash scripts/21_IMGN50_512_Pre_BS_patch.sh
-```
-
-<details>
-<summary>Details</summary>
-
-   - **patch_num**  
-     패치의 개수를 조절하는 argument입니다. 64로 설정하면 8X8 모양의 패치를 만들어 이미지를 concat합니다.
-     ```bash
-     --patches 64
-     ```
-
-</details>
 
 # Detecting Noisy-labels
 
