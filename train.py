@@ -70,6 +70,8 @@ def main(args):
     print(">> Load the model...", flush=True)
     if args.model_name == 'resnet':
         model = RN.ResNet(args.model_name, args.depth, args.num_classes, args.bottleneck, args.pretext, args.resolution)
+    elif args.model_name == 'ResNet_patch_overlap':
+        model = RN.ResNet_patch_overlap(args.model_name, args.depth, args.num_classes, args.bottleneck, args.pretext, patch_num=args.patch_num, overlap=args.overlap)
     elif args.model_name == 'ResNet_patch16':
         model = RN.ResNet_patch16(args.model_name, args.depth, args.num_classes, args.bottleneck, args.pretext, patch_num=args.patch_num)
     elif 'ViT' in args.model_name:
@@ -230,18 +232,17 @@ def main(args):
             is_best = True
 
         print("------------------------------------------------------------------------")
-        if epoch >= args.epochs // 2:
-            if is_best:
-                model_filename = os.path.join(save_dir, f'{args.exp_name}_epoch{best_epoch}.pth')
-                torch.save(
-                    {
-                        'epoch': epoch+1,
-                        'state_dict': model.state_dict(),
-                        'optimizer': optimizer.state_dict() if not args.fgssl else ce_optimizer,
-                        'scheduler': scheduler.state_dict() if not args.fgssl else None,
-                    },
-                    model_filename
-                )
+        if is_best:
+            model_filename = os.path.join(save_dir, f'{args.exp_name}_epoch{best_epoch}.pth')
+            torch.save(
+                {
+                    'epoch': epoch+1,
+                    'state_dict': model.state_dict(),
+                    'optimizer': optimizer.state_dict() if not args.fgssl else ce_optimizer,
+                    'scheduler': scheduler.state_dict() if not args.fgssl else None,
+                },
+                model_filename
+            )
             
     print("\nBest Epoch {:03d} \t Best Acc {:.3f}" \
           .format(best_epoch, best_acc), flush=True)

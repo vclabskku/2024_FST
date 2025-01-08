@@ -1,8 +1,8 @@
-EXP_NAME=21_IMGN50_512_Pre_BS_resize_64patch
+EXP_NAME=21_IMGN50_512_Pre_BS_resize_overlap
 GPU=1
 
 python train.py \
-    --model_name ResNet_patch16 \
+    --model_name ResNet_patch_overlap \
     --train_list train \
     --val_list test \
     --test_list test \
@@ -12,6 +12,7 @@ python train.py \
     --image_cut patch \
     --gpu ${GPU} \
     --patch_num 16 \
+    --overlap 50 \
     --exp_name ${EXP_NAME} | tee ./logs/${EXP_NAME}.log
 
 # model_name

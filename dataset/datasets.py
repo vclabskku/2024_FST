@@ -56,8 +56,7 @@ class FSTDataset(Dataset):
         elif self.args.image_cut == 'resize':
             size_transform = transforms.Resize((args.resolution, args.resolution))
         elif self.args.image_cut == 'patch':
-            patch_size = int(args.patch_num**0.5)
-            size_transform = transforms.Resize((args.resolution*patch_size, args.resolution*patch_size))
+            size_transform = transforms.Resize((1000,1000))
 
 
         if is_train:

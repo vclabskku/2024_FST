@@ -28,6 +28,7 @@ def get_opts():
     parser.add_argument('--num_layer', type=int, default=3)
     parser.add_argument('--hidden_dim', type=int, default=256)
     parser.add_argument('--patch_num', type=int, default=16)
+    parser.add_argument('--overlap', type=int, default=100)
 
     # train
     parser.add_argument('--epochs', type=int, default=50)
