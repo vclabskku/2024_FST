@@ -395,9 +395,6 @@ class ResNet_patch_overlap(nn.Module):
                 start_w = j * (patch_size - stride)
                 end_h = min(start_h + patch_size, H)
                 end_w = min(start_w + patch_size, W)
-                
-                print(start_h, start_w)
-
                 patch = x[:, :, start_h:end_h, start_w:end_w]  
                 patches.append(patch)
         x = torch.cat(patches, dim=1)
