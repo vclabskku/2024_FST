@@ -13,6 +13,7 @@ python train.py \
     --gpu ${GPU} \
     --patch_num 4 \
     --overlap 50 \
+    --epochs 100 \
     --exp_name ${EXP_NAME} | tee ./logs/${EXP_NAME}.log
 
 EXP_NAME=21_IMGN50_512_Pre_BS_resize_overlap_16
@@ -30,6 +31,7 @@ python train.py \
     --gpu ${GPU} \
     --patch_num 16 \
     --overlap 50 \
+    --epochs 100 \
     --exp_name ${EXP_NAME} | tee ./logs/${EXP_NAME}.log
 
 EXP_NAME=21_IMGN50_512_Pre_BS_resize_overlap_64
@@ -47,6 +49,7 @@ python train.py \
     --gpu ${GPU} \
     --patch_num 64 \
     --overlap 50 \
+    --epochs 100 \
     --exp_name ${EXP_NAME} | tee ./logs/${EXP_NAME}.log
 
 # model_name
