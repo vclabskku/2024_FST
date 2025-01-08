@@ -198,9 +198,8 @@ TODO
 ### Evaluation
 
 학습에 사용했던 shell 파일에 '--eval' 인자를 추가하여 평가 모드로 전환하고, 평가하고 싶은 모델 weight의 경로를 '--resume_weights' 인자로 전달하여 평가를 진행하면 됩니다 
-
-     예시:  
-     ```bash
+  
+     ```
      --eval  \
      --resume_weights ./ckpts/{EXP_NAME}/{EXP_NAME}_epoch{best_epoch}.pth
      ```
