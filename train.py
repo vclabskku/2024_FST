@@ -95,6 +95,11 @@ def main(args):
     if args.resume_weights:
         if 'ViT' in args.model_name: # if add more model, add here
             pass
+        elif args.model_name.startswith('dinov2'):
+            path = os.path.join(args.resume_weights)
+            checkpoint = torch.load(path)
+            model.load_state_dict(checkpoint['state_dict'])
+            print("=> loaded weight '{}'".format(path))
         else:
             path = os.path.join(args.resume_weights)
             if os.path.isfile(path):
@@ -184,19 +189,27 @@ def main(args):
         ce_optimizer = get_ce_optimizer(args, model)
 
     # train
-    print(">> Train...", flush=True)
     best_acc = 0.
     best_epoch = 0
     best_class_acc = None
     is_best = False
     
+    print(">> Eval...", flush=True)
     if args.eval:
         ### Only evaluation
+        if args.model_name.startswith('dinov2'):
+            result, best_key = val_dino(args, val_loader, model, criterion)
+            best_epoch = int(args.resume_weights.split("epoch")[-1].replace(".pth", ""))
+            best_acc = result['total_acc']
+            best_class_acc = result['class_acc']
+            print("Best: ", best_key)
+    
         print("\nBest Epoch {:03d} \t Best Acc {:.3f}".format(best_epoch, best_acc), flush=True)
         print("Best Class Acc {}".format(best_class_acc), flush=True)
         print("<< Evaluation Finished.\n")
         return
-
+    
+    print(">> Train...", flush=True)
     for epoch in range(args.epochs):
         is_best=False
         if args.loss_function == 'contrastive':
