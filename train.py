@@ -205,10 +205,18 @@ def main(args):
             best_acc = result['total_acc']
             best_class_acc = result['class_acc']
             print("Best: ", best_key)
+            
+        elif args.model_name == 'ResNet_patch_overlap':
+            result, best_key = val_resnet(args, val_loader, model, criterion)
+            best_epoch = int(args.resume_weights.split("epoch")[-1].replace(".pth", ""))
+            best_acc = result['total_acc']
+            best_class_acc = result['class_acc']
+            print("Best: ", best_key)
     
         print("\nBest Epoch {:03d} \t Best Acc {:.3f}".format(best_epoch, best_acc), flush=True)
         print("Best Class Acc {}".format(best_class_acc), flush=True)
         print("<< Evaluation Finished.\n")
+        
         return
     
     print(">> Train...", flush=True)
@@ -695,6 +703,62 @@ def val_dino(args, val_loader, model, criterion):
     best_key = max(results, key=lambda k: results[k]['total_acc'])
     return results[best_key], best_key
 
+def val_resnet(args, val_loader, model, criterion):
+
+    model.eval()
+    n_image = len(val_loader.dataset)
+    n_batch = len(val_loader)
+    bs = args.batch_size
+    total_loss = 0.
+
+    total_preds_per_classifier = {k: torch.zeros(n_image, dtype=torch.long) for k in model.linear_classifiers.classifiers_dict.keys()}
+    total_labels = torch.zeros(n_image, dtype=torch.long)
+
+    with torch.no_grad():
+        for batch_idx, (images, _, labels) in enumerate(val_loader):
+            labels = labels.cuda()
+            if not args.concat:
+                images = images.cuda()
+            logits, _ = model(images)
+            losses = {f"loss_{k}": criterion(v, labels) for k, v in logits.items()}
+            loss = sum(losses.values())
+            total_loss += loss.item()
+            total_idx = bs * batch_idx
+
+            # Process outputs for each classifier
+            for k, v in logits.items():
+                preds = torch.argmax(v, dim=1)
+        
+                if batch_idx == n_batch - 1:
+                    total_preds_per_classifier[k][total_idx:] = preds.cpu()
+                    total_labels[total_idx:] = labels.cpu()
+                else:
+                    total_preds_per_classifier[k][total_idx:total_idx + bs] = preds.cpu()
+                    total_labels[total_idx:total_idx + bs] = labels.cpu()
+
+    # Compute accuracy for each classifier
+    results = {}
+    for k, preds in total_preds_per_classifier.items():
+        total_acc = (total_labels == preds).sum().item() / n_image * 100
+        total_loss /= n_image
+        matrix = confusion_matrix(total_labels.numpy(), preds.numpy())
+        acc_list = matrix.diagonal() / matrix.sum(axis=1)
+        acc_list = [round(x * 100, 2) for x in acc_list]
+        
+        # Save results 
+        results[k] = {
+            'loss' : total_loss,
+            'total_acc': total_acc,
+            'class_acc': acc_list,
+            'confusion_matrix': matrix
+        }
+
+        # plot confusion
+        # class_name = ['00_Normal', '01_Spot', '03_Solid', '04_Dark Dust', '05_Shell', '06_Fiber', '07_Smear', '08_Pinhole', '11_OutFo']
+        # plot_confusion_matrix(matrix, class_name, './img/{}_confusion_matrix_ACC_{:.3f}.png'.format(k, total_acc))
+
+    best_key = max(results, key=lambda k: results[k]['total_acc'])
+    return results[best_key], best_key
 
 if __name__ == '__main__':
     warnings.filterwarnings(action='ignore')
