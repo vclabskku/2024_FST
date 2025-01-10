@@ -96,9 +96,22 @@ TODO
 </details>
 
 ### Evaluation
+빠른 실행 명령어
+```bash 
+  bash scripts/21_IMGN50_512_Pre_BS_patch_eval.sh
+```
+<details>
+<summary>Details</summary>
 
-TODO
+  평가하고 싶은 모델 weight의 경로를 '--resume_weights' 인자로 전달하여 평가를 진행하면 됩니다
+  이때 패치의 개수를 잘 변경해야 원활하게 평가가 진행됩니다.
 
+  - 패치 개수가 16개인 경우 : 21_IMGN50_512_Pre_BS_resize_16patch_epoch90.pth => --patches 16
+  
+  - 패치 개수가 64개인 경우 : 21_IMGN50_512_Pre_BS_resize_64patch_epoch90.pth => --patches 64
+
+
+</details>
 
 
 ## Fine-grained Self-Supervision
