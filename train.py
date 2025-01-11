@@ -102,7 +102,7 @@ def main(args):
             checkpoint = torch.load(path)
             model.load_state_dict(checkpoint['state_dict'])
             print("=> loaded weight '{}'".format(path))
-        elif args.model_name.startswith('ResNet'):
+        elif args.model_name.startswith('ResNet') and args.eval:
             path = os.path.join(args.resume_weights)
             checkpoint = torch.load(path)
             model.load_state_dict(checkpoint['state_dict'])

@@ -7,11 +7,11 @@ python train.py \
     --val_list test \
     --test_list test \
     --depth 50 \
-    --resume_weights /mnt/ssd0/WJ/lab_assn/FST/suho/2024_FST/ckpts/22_IMGN50_512_Pre_BS_resize_overlap_4/22_IMGN50_512_Pre_BS_resize_overlap_4_epoch3.pth \
+    --resume_weights /mnt/ssd0/WJ/lab_assn/FST/suho/2024_FST/ckpts/22_IMGN50_512_Pre_BS_resize_overlap_64/22_IMGN50_512_Pre_BS_resize_overlap_64_epoch71.pth \
     --loss_function LogitAdjust \
     --image_cut patch \
     --gpu ${GPU} \
-    --patch_num 4 \
+    --patch_num 64 \
     --overlap 50 \
     --epochs 100 \
     --eval \
