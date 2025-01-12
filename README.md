@@ -149,9 +149,10 @@ TODO
 
 ### Evaluation
 
-TODO
-
-
+빠른 실행 명령어
+```bash 
+  bash scripts/20_IMGN50_512_Pre_CE_crop_fgssl_eval.sh
+```
 
 ## DINOv2 linear probing 
 

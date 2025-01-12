@@ -97,6 +97,8 @@ def main(args):
     if args.resume_weights:
         if 'ViT' in args.model_name: # if add more model, add here
             pass
+        elif args.fgssl and args.eval:
+            pass
         elif args.model_name.startswith('dinov2'):
             path = os.path.join(args.resume_weights)
             checkpoint = torch.load(path)
@@ -132,6 +134,12 @@ def main(args):
             param.requires_grad = True
         model = PMG(args, model, args.featdim, args.num_classes, args.resolution)
 
+        if args.eval:
+            path = os.path.join(args.resume_weights)
+            checkpoint = torch.load(path)
+            model.load_state_dict(checkpoint['state_dict'])
+            print("=> loaded weight '{}'".format(path))
+   
     num_params = count_parameters(model)
     print("Total Parameter: \t%2.1fM" % num_params)
 
@@ -219,6 +227,12 @@ def main(args):
             
         elif args.model_name == 'ResNet_patch16':
             result = val_resnet(args, val_loader, model, criterion)
+            best_epoch = int(args.resume_weights.split("epoch")[-1].replace(".pth", ""))
+            best_acc = result['total_acc']
+            best_class_acc = result['class_acc']
+
+        elif args.model_name == 'resnet' and args.fgssl:
+            result = val_fine(args, model, val_loader, criterion)
             best_epoch = int(args.resume_weights.split("epoch")[-1].replace(".pth", ""))
             best_acc = result['total_acc']
             best_class_acc = result['class_acc']
