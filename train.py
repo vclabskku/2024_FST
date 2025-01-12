@@ -109,6 +109,11 @@ def main(args):
             checkpoint = torch.load(path)
             model.load_state_dict(checkpoint['state_dict'])
             print("=> loaded weight '{}'".format(path))
+        elif args.model_name == 'resnet' and args.eval:
+            path = os.path.join(args.resume_weights)
+            checkpoint = torch.load(path)
+            model.load_state_dict(checkpoint['state_dict'])
+            print("=> loaded weight '{}'".format(path))
         else:
             path = os.path.join(args.resume_weights)
             if os.path.isfile(path):
@@ -214,28 +219,19 @@ def main(args):
         ### Only evaluation
         if args.model_name.startswith('dinov2'):
             result, best_key = val_dino(args, val_loader, model, criterion)
-            best_epoch = int(args.resume_weights.split("epoch")[-1].replace(".pth", ""))
-            best_acc = result['total_acc']
-            best_class_acc = result['class_acc']
-            print("Best: ", best_key)
-            
-        elif args.model_name == 'ResNet_patch_overlap':
+        elif args.model_name == 'ResNet_patch_overlap' or args.model_name == 'ResNet_patch16':
             result = val_resnet(args, val_loader, model, criterion)
-            best_epoch = int(args.resume_weights.split("epoch")[-1].replace(".pth", ""))
-            best_acc = result['total_acc']
-            best_class_acc = result['class_acc']
-            
-        elif args.model_name == 'ResNet_patch16':
-            result = val_resnet(args, val_loader, model, criterion)
-            best_epoch = int(args.resume_weights.split("epoch")[-1].replace(".pth", ""))
-            best_acc = result['total_acc']
-            best_class_acc = result['class_acc']
-
         elif args.model_name == 'resnet' and args.fgssl:
             result = val_fine(args, model, val_loader, criterion)
-            best_epoch = int(args.resume_weights.split("epoch")[-1].replace(".pth", ""))
-            best_acc = result['total_acc']
-            best_class_acc = result['class_acc']
+        elif args.model_name == 'resnet':
+            if args.loss_function == 'contrastive':
+                result = val_nce(args, val_loader, model, criterion_ce, classifier)
+            else:
+                result = val(args, val_loader, model, criterion)
+
+        best_epoch = int(args.resume_weights.split("epoch")[-1].replace(".pth", ""))
+        best_acc = result['total_acc']
+        best_class_acc = result['class_acc']
     
         print("\nBest Epoch {:03d} \t Best Acc {:.3f}".format(best_epoch, best_acc), flush=True)
         print("Best Class Acc {}".format(best_class_acc), flush=True)
