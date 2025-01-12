@@ -8,7 +8,7 @@ python train.py \
     --val_list test \
     --test_list test \
     --depth 50 \
-    --resume_weights /workspace/2024_FST/ckpts/20_IMGN50_512_Pre_CE_crop_fgssl/20_IMGN50_512_Pre_CE_crop_fgssl_epoch734.pth \
+    --resume_weights /mnt/hdd0/FST/2024_FST/ckpts/20_IMGN50_512_Pre_CE_crop_fgssl/20_IMGN50_512_Pre_CE_crop_fgssl_epoch734.pth \
     --eval \
     --epochs 1000 \
     --lr 1e-2 \
