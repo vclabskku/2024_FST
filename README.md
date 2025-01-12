@@ -72,7 +72,13 @@ ex) EXP_NAME=1_CNN3_512_BS_resize
 
 ### Evaluation
 
-TODO
+빠른 실행 명령어
+```bash
+  bash scripts/13_IMGN50_512_Pre_CE_resize_eval.sh
+  bash scripts/14_IMGN50_512_Pre_CE_crop_eval.sh
+  bash scripts/15_IMGN50_512_Pre_BS_resize_eval.sh
+  bash scripts/16_IMGN50_512_Pre_BS_crop_eval.sh
+```
 
 
 ## Patch-wize image concatenation
