@@ -19,8 +19,17 @@
         └── 08_Pinhole
         └── 11_OutFo   
         └── train.json
-        └── test.json
+        └── test.json 
 ```
+
+ResNet pretrained weight [Link](https://drive.google.com/file/d/1OERP2vCkLl_gsS9-xS3YBnTPF-lCPcrX/view?usp=sharing) 는 다운받아서 준비해주시고,
+해당 경로를 resume_weights 인자에 입력해주시면 됩니다. (utils/opt.py 참고)
+현재는 scripts 디렉토리 내부에 있는 .sh 쉘 파일들안에 인자로 
+```
+--resume_weights /mnt/hdd0/FST/_prev_20220726/weights/imagenet/resnet50-11ad3fa6.pth 
+```
+이렇게 입력이 되어있는데 해당 경로를 위 파일을 다운 받으신 경로로 바꿔주시면됩니다.
+
 
 ## Data Processing
 Split the FST Data into training / testing set using 'data_process.py'.
@@ -227,7 +236,7 @@ ex) EXP_NAME=1_CNN3_512_BS_resize
 
 
 
-# Detecting Noisy-labels
+# Detecting Noisy-labels (레이블 오류일 확률이 높은 데이터 모음 만드는 방법)
 
 'data process_5set' 파일은 각각 중복되지 않은 5개의 train/test set을 만드는 데이터 전처리 파일입니다.
 ```aiignore
@@ -252,3 +261,8 @@ visualize_wrongpred.py 내부의 exp_names 리스트 안에 선언합니다.
 ```
 python visualize_wrongpred.py
 ```
+
+# New Data Version?
+새로운 데이터 버전을 적용하고싶다면, utils/opt.py 에 있는 dataset_dir 변수를 수정하면 됩니다.
+
+
