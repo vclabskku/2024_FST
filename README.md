@@ -229,25 +229,24 @@ ex) EXP_NAME=1_CNN3_512_BS_resize
 
 # Detecting Noisy-labels
 
-'data process_4set', 'data process_5set' 두 파일은 4개의 클래스로 나누는 경우와 5개의 클래스로 나누는 경우에 대한 데이터 전처리 파일입니다.
+'data process_5set' 파일은 각각 중복되지 않은 5개의 train/test set을 만드는 데이터 전처리 파일입니다.
 ```aiignore
-python data_process_4set.py
 python data_process_5set.py
 ```
 
 해당 파일들은 데이터 셋의 모든 이미지들이 각각 한번씩 test set에 포함되게 데이터를 나눕니다.
-그 후, 4/5 개로 나뉜 train/test set은 noisy label을 찾는데 사용됩니다.
+그 후, 5 개로 나뉜 train/test set은 noisy label을 찾는데 사용됩니다.
 
 noisy label일 확률이 높은 데이터들을 뽑는 방법은 
 
 1.다양한 모델을 먼저 여러번 실행하여 체크포인트를 얻습니다.
-예를 들어, scripts 디렉토리 안에있는 13, 14, 15, 16번 방법들 (baseline 4개)를 이용하여 4개의 모델을 각 스플릿마다 학습시키고 checkpoint를 얻기 위해서는
+예를 들어, scripts 디렉토리 안에있는 13, 14, 15, 16번 방법들 (baseline 4개)를 이용하여 4개의 모델을 각 5개의 스플릿마다 학습시키고 checkpoint를 얻기 위해서는
 ```aiignore
-bash 13_14_15_16_4split.sh
+bash scripts/13_14_15_16_5split.sh
 ```
 를 실행시키면 됩니다.
 
-위와같이 예시로 4개의 checkpoint를 4개 split에 대해 각각 만들었다고 가정시, 해당 checkpoint들의 경로를
+위와같이 예시로 4개의 checkpoint를 5개 split에 대해 각각 만들었다고 가정시, 해당 checkpoint들의 경로를
 visualize_wrongpred.py 내부의 exp_names 리스트 안에 선언합니다.
 그 후 visualize_wrongpred.py 를 실행하면 해당 4개 모델 중 n 개 모델이 틀린 샘플들을 './img/wrong_pred' 폴더에 저장합니다.
 ```
